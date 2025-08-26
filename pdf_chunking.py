@@ -24,7 +24,7 @@ model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 embeddings = model.encode(chunks)
 
-print(embeddings.shape)  
+print(embeddings.shape)
 
 
 
@@ -59,18 +59,18 @@ retrieved_chunks = [chunks[i] for i in indices[0]]
 
 
 prompt = f"""
-ce sont des excercice predefinis
+ce sont des exemples des excercices 
 
 {retrieved_chunks}
 
-    maintenent , generer  3 nouveau  exercices  en francais avec un exemple d'execution
+    maintenent , generer  3 nouveau  exercices   en francais avec un exemple d'execution  en gardant the meme style de les exemples
 
-    difficulté : difficile
+    
      
 
 """
 
-import ollama
+"""import ollama
 import requests
 
 
@@ -83,9 +83,30 @@ response = client.generate(model=model , prompt=prompt )
 end_time = datetime.now()
 
 print(end_time - start_time , "sec")
-print(response.response)
+print(response.response)"""
 
 
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
 
 
+load_dotenv()
 
+openai_api_token = os.getenv('openai_api_key')
+
+client = OpenAI(
+  api_key=openai_api_token
+)
+
+response = client.responses.create(
+  model="gpt-4o-mini",
+  input= prompt,
+  store=True,
+)
+
+end_time = datetime.now()
+
+print(end_time - start_time , "sec")
+
+print(response.output_text)
