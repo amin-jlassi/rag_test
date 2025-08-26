@@ -5,8 +5,11 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
-#from pickle import load , dump
+from pickle import load , dump
+from datetime import datetime
 
+
+start = datetime.now()
 
 load_dotenv()
 
@@ -38,12 +41,31 @@ class PdfLoader:
 
 class Chunker : 
     
-    def __init__(self , text) :
-        self.text = text
-
-    def start_chunking(self) : 
-        chunks = re.split(r"Exercice [0-9]+" , self.text)
+    def __init__(self) :
+        pass
+    def start_chunking(self , text) : 
+        chunks = re.split(r"Exercice [0-9]+" , text)
         return chunks[1:len(chunks)]
+    
+    def save_chunk(self , chunks) : 
+        with open("chunks.pkl" , "ab") as f :
+            dump(chunks , f)
+            print('chunk saved successfuly ...')
+    def load_chunks(self) : 
+        chunk_list = []
+        with open("chunks.pkl" , "rb") as f :
+            EOF = False
+            while not EOF :
+                try : 
+                    pdf_chunks = load(f)
+                except : 
+                    EOF = True
+                else :
+                    for chunk in pdf_chunks : 
+                        chunk_list.append(chunk)
+                    
+        print(len(chunk_list))
+        return chunk_list
 
 
 class Embeddings : 
@@ -54,6 +76,8 @@ class Embeddings :
     def generate_embeddings(self , chunks) : 
         model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
         self.embeddings = model.encode(chunks)
+        
+
         return self.embeddings
     def save(self , index_path = "index.bin") :
 
@@ -61,7 +85,6 @@ class Embeddings :
             raise ValueError("You must generate embeddings before saving")
 
         
-
         d = self.embeddings.shape[1]
 
         if os.path.exists(index_path) : 
@@ -69,9 +92,9 @@ class Embeddings :
             index.add(self.embeddings)
             print(f"Loaded existing index with {index.ntotal} vectors before adding.")
         else :
-            index = faiss.IndexFlatL2(d)
-            index.add(self.embeddings)
-            print("Created new FAISS index.")
+            index = faiss.IndexFlatL2(d) 
+            index.add(self.embeddings) 
+            print("Created new FAISS index.") 
         
         faiss.write_index(index , index_path)
         print("New embeddings saved. Total vectors in index:", index.ntotal)
@@ -79,6 +102,7 @@ class Embeddings :
     def get_index(self , index_path = "index.bin") : 
         index = faiss.read_index(index_path)
         return index
+
 
 
         
@@ -94,7 +118,8 @@ pdf_path = "Series1.pdf"
 if not exist(pdf_path) :
     loader = PdfLoader(pdf_path)
     text = loader.exctract_text()
-    chunks = Chunker(text=text).start_chunking()
+    chunks = Chunker().start_chunking(text=text)
+    Chunker().save_chunk(chunks)
     embeddings = Embeddings()
     embeddings.generate_embeddings(chunks=chunks)
     embeddings.save()
@@ -105,27 +130,38 @@ else :
 index = Embeddings().get_index()
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-query = "excerice qui contient les coures suivant : enregistrement , tableau , fichier "
+chunks = Chunker().load_chunks()
+
+
+
+
+
+query = "enregistrement , tableau , fichier"
 query_emb = model.encode([query] , convert_to_numpy=True)
 
 distances , indices = index.search(query_emb , k=2)
-retrieved_chunks = [chunks[i] for i in indices[0]]
+retrieved_chunks = [chunks[i] for i in indices[0]] 
+
+print(distances)
 
 prompt = f"""
 Voici des exemples d'exercices :
 
 {retrieved_chunks}
 
-Maintenant, génère 3 nouveaux exercices en français, 
+Maintenant, génère 2 nouveaux exercices en français, 
 en gardant le même style que les exemples, 
 et fournis pour chacun un exemple d'exécution.
+nb : si tu vas générer des tableaus tu doit les encadrer (pour etre claire)
 """
 
 
 response = client.responses.create(
-    model="chatgpt-4o-mini" , 
+    model="gpt-4o-mini" , 
     input=prompt , 
-    store=True
+    store=True , 
+    temperature=0.8
 )
-
-print(response.output_text)
+end = datetime.now()
+print(end-start)
+print(response.output_text)  
