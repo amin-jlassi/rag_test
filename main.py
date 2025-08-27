@@ -144,17 +144,17 @@ chunks = Chunker().load_chunks()
 
 
 
-query = "récursivité"
+query = "fichiers"
 query_emb = model.encode([query] , convert_to_numpy=True)
 
-distances , indices = index.search(query_emb , k=3)
+distances , indices = index.search(query_emb , k=4)
 retrieved_chunks = [chunks[i] for i in indices[0]]
 
-print(len(retrieved_chunks))
+"""print(len(retrieved_chunks))
 
 for x in retrieved_chunks : 
     print(x)
-    print("*****************")
+    print("*****************")"""
 
 
 prompt = f"""
@@ -162,14 +162,14 @@ Voici des exemples d'exercices :
 
 {retrieved_chunks}
 
-Maintenant, génère un nouveaux exercices en français, 
+Maintenant, génère 3 nouveaux exercices en français, 
 en gardant le même style que les exemples, 
 et fournis pour chacun un exemple d'exécution et surtout les exemples doit etre correct.
 nb : si tu vas générer des tableaus tu doit les encadrer (pour etre claire)
 """
 
 
-"""response = client.responses.create(
+response = client.responses.create(
     model="gpt-4o-mini" , 
     input=prompt , 
     store=True , 
@@ -177,4 +177,4 @@ nb : si tu vas générer des tableaus tu doit les encadrer (pour etre claire)
 )
 end = datetime.now()
 print(end-start)
-print(response.output_text)  """
+print(response.output_text)  
