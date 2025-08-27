@@ -1,2 +1,5 @@
-excercice1.pdf
-Series1.pdf
+dataset\excercice1.pdf
+dataset\Series1.pdf
+dataset\Series2.pdf
+dataset\Series3.pdf
+dataset\Series4.pdf

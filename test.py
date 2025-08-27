@@ -45,8 +45,8 @@ class Chunker :
         pass
     def start_chunking(self , text) : 
         chunks = re.split(r"Exercice [0-9]+" , text)
-        if len(chunks) == 1 : 
-            chunks = re.split(r"EXERCICE [0-9]+" , text)
+        
+        print(chunks[0])
         return chunks[1:len(chunks)]
     
     def save_chunk(self , chunks) : 
@@ -87,22 +87,19 @@ class Embeddings :
             raise ValueError("You must generate embeddings before saving")
 
         
-        try : 
-            d = self.embeddings.shape[1]
-        except : 
-            print("an error is occuring in file : " , pdf_path)
-        else : 
-            if os.path.exists(index_path) : 
-                index = faiss.read_index(index_path)
-                index.add(self.embeddings)
-                print(f"Loaded existing index with {index.ntotal} vectors before adding.")
-            else :
-                index = faiss.IndexFlatL2(d) 
-                index.add(self.embeddings) 
-                print("Created new FAISS index.") 
-            
-            faiss.write_index(index , index_path)
-            print("New embeddings saved. Total vectors in index:", index.ntotal)
+        d = self.embeddings.shape[1]
+
+        if os.path.exists(index_path) : 
+            index = faiss.read_index(index_path)
+            index.add(self.embeddings)
+            print(f"Loaded existing index with {index.ntotal} vectors before adding.")
+        else :
+            index = faiss.IndexFlatL2(d) 
+            index.add(self.embeddings) 
+            print("Created new FAISS index.") 
+        
+        faiss.write_index(index , index_path)
+        print("New embeddings saved. Total vectors in index:", index.ntotal)
     
     def get_index(self , index_path = "index.bin") : 
         index = faiss.read_index(index_path)
@@ -118,22 +115,21 @@ class Embeddings :
     
 from utils import exist , savePdf_inFile
 
-folder_path = "dataset"
-with os.scandir(folder_path) as entries : 
-    for entry in entries : 
-        if entry.is_file() : 
-            pdf_path = entry.path
-            if not exist(pdf_path) :
-                loader = PdfLoader(pdf_path)
-                text = loader.exctract_text()
-                chunks = Chunker().start_chunking(text=text)
-                Chunker().save_chunk(chunks)
-                embeddings = Embeddings()
-                embeddings.generate_embeddings(chunks=chunks)
-                embeddings.save()
-                savePdf_inFile(pdf_path)
-            else :
-                print("file already exists")
+
+pdf_path = "dataset/Series2.pdf"
+if not exist(pdf_path) :
+    loader = PdfLoader(pdf_path)
+    text = loader.exctract_text()
+    chunks = Chunker().start_chunking(text=text)
+    Chunker().save_chunk(chunks)
+    
+    embeddings = Embeddings()
+    x = embeddings.generate_embeddings(chunks=chunks)
+    print(x)
+    embeddings.save()
+    savePdf_inFile(pdf_path)
+else :
+    print("file already exists")
 
 index = Embeddings().get_index()
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
@@ -144,32 +140,27 @@ chunks = Chunker().load_chunks()
 
 
 
-query = "récursivité"
+query = "enregistrement , tableau , fichier"
 query_emb = model.encode([query] , convert_to_numpy=True)
 
-distances , indices = index.search(query_emb , k=3)
-retrieved_chunks = [chunks[i] for i in indices[0]]
+distances , indices = index.search(query_emb , k=2)
+retrieved_chunks = [chunks[i] for i in indices[0]] 
 
-print(len(retrieved_chunks))
-
-for x in retrieved_chunks : 
-    print(x)
-    print("*****************")
-
+print(distances)
 
 prompt = f"""
 Voici des exemples d'exercices :
 
 {retrieved_chunks}
 
-Maintenant, génère un nouveaux exercices en français, 
+Maintenant, génère 2 nouveaux exercices en français, 
 en gardant le même style que les exemples, 
-et fournis pour chacun un exemple d'exécution et surtout les exemples doit etre correct.
+et fournis pour chacun un exemple d'exécution.
 nb : si tu vas générer des tableaus tu doit les encadrer (pour etre claire)
 """
 
 
-"""response = client.responses.create(
+response = client.responses.create(
     model="gpt-4o-mini" , 
     input=prompt , 
     store=True , 
@@ -177,4 +168,4 @@ nb : si tu vas générer des tableaus tu doit les encadrer (pour etre claire)
 )
 end = datetime.now()
 print(end-start)
-print(response.output_text)  """
+print(response.output_text)  
