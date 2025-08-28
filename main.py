@@ -123,7 +123,7 @@ with os.scandir(folder_path) as entries :
             pdf_path = entry.path
             if not exist(pdf_path) :
                 loader = PdfLoader(pdf_path)
-                text = loader.exctract_text()
+                text = loader.extract_text()
                 chunks = Chunker().start_chunking(text=text)
                 Chunker().save_chunk(chunks)
                 embeddings = Embeddings()
